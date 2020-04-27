@@ -73,7 +73,7 @@ func main() {
         return
     }
 
-    runLexer(lex(string(data), "", ""))
+    runLexer(lex(string(data)))
 }
 
 func runLexer(lex *lexer) {

@@ -16,7 +16,7 @@ var tests = []testPairKey{
 
 func TestKey(t *testing.T) {
     for pairNumber, pair := range tests {
-        lexer := lex(pair.string, "", "")
+        lexer := lex(pair.string)
         i := 0
 
         for x := range lexer.items {

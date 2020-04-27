@@ -65,9 +65,6 @@ var keyWords = map[string]itemType{
 
 type lexer struct {
 	input          string
-	leftDelim      string
-	rightDelim     string
-	trimRightDelim string
 	pos            Pos
 	start          Pos
 	width          Pos
@@ -113,11 +110,11 @@ const (
 	itemTemplate
 	itemWith
 	itemFor
-  itemDoublePlus
-  itemDoubleMinus
-  itemMinus
-  itemPlus
-  itemNewLine
+	itemDoublePlus
+	itemDoubleMinus
+	itemMinus
+	itemPlus
+	itemNewLine
 	// header types
 	itemPackage
 	itemPackageValue
@@ -125,24 +122,17 @@ const (
 	itemImportValue
 	itemFunctionDefine
 	itemNotEqual
-  itemFunctionName
-  itemVariableType
-  itemMap
-  itemVar
-  itemColon
-  itemByteType
-  itemStringType
-  itemIntType
+	itemFunctionName
+	itemVariableType
+	itemMap
+	itemVar
+	itemColon
+	itemByteType
+	itemStringType
+	itemIntType
 	itemUnknownToken
 	itemSemiColon
 	itemComment
-)
-
-const (
-	spaceChars      = " \t\r\n"
-	leftTrimMarker  = "- "
-	rightTrimMarker = " -"
-	trimMarkerLen   = Pos(len(leftTrimMarker))
 )
 
 const eof = -1
@@ -212,20 +202,9 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 	return nil
 }
 
-func lex(input, left, right string) *lexer {
-	if left == "" {
-		left = leftDelim
-	}
-
-	if right == "" {
-		right = rightDelim
-	}
-
+func lex(input string) *lexer {
 	l := &lexer{
 		input:          input,
-		leftDelim:      left,
-		rightDelim:     right,
-		trimRightDelim: rightTrimMarker + right,
 		items:          make(chan item),
 		line:           1,
 		startLine:      1,
