@@ -8,7 +8,7 @@ type testPairKey struct {
 }
 
 var tests = []testPairKey{
-    { "if i := 0 {\n}", []itemType{itemIf, itemSpace, itemIdentifier, itemSpace, itemDeclare, itemSpace, itemNumber, itemSpace, itemLeftDelim, itemNewLine, itemRightDelim} },
+    { "if i := 0 {\n}", []itemType{itemIf, itemSpace, itemIdentifier, itemDeclare, itemDeclare, itemSpace, itemNumber, itemSpace, itemLeftDelim, itemNewLine, itemRightDelim} },
     { "range", []itemType{itemRange} },
     { "{####}", []itemType{itemLeftDelim, itemUnknownToken, itemRightDelim} },
     { "{/*asdasd*/asdasd.Atoi()}", []itemType{itemLeftDelim, itemComment, itemIdentifier, itemFunction, itemLeftParen, itemRightParen, itemRightDelim} },

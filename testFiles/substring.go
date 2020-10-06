@@ -6,13 +6,6 @@ import (
   "os"
 )
 
-func errorCheck(err error)  {
-  if err != nil {
-    fmt.Println(err.Error())
-    os.Exit(1)
-  }
-}
-
 func main()  {
   strings := []string{
     "string@asdasd.ru",
@@ -24,7 +17,6 @@ func main()  {
 
   for _, string := range strings {
         matched, err := regexp.Match(subString, []byte(string))
-        errorCheck(err)
         if matched {
             fmt.Printf("√ '%s' has subString\n", string)
         } else {

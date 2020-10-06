@@ -4,9 +4,11 @@ import (
     "fmt"
     "io/ioutil"
     "os"
+    "time"
 )
 
 var valuesTranslations = map[int]string{
+  -1: "program_head",
   0: "itemError",
   1: "itemBool",
   2: "itemChar",
@@ -73,15 +75,182 @@ func main() {
         return
     }
 
-    runLexer(lex(string(data)))
+    lexer := lex(string(data))
+    parse(lexer)
+
+    // for item := range lexer.items {
+    //     fmt.Println("value: ",item.val, "; ", valuesTranslations[int(item.typ)], "; position:", int(item.line), ":", int(item.pos))
+    // }
 }
 
-func runLexer(lex *lexer) {
-  for x := range lex.items {
-    if x.val == "\n" {
-      x.val = "\\n"
-    }
-
-    fmt.Println("type -", valuesTranslations[int(x.typ)], "; value - \"", x.val , "\"; position -", x.pos + 1, "; line -", x.line)
+func parse(lex *lexer) {
+  // var stack[]int
+  tree := &AstTree{
+    level: 0,
+    typ: -1,
   }
+  token := getNextToken(lex, false)
+
+  stmt(tree, token, lex, 1)
+  printTree(tree)
+}
+
+//main parse function
+
+func stmt(tree *AstTree, token *item, lex *lexer, currentLevel int) {
+  if token.typ == itemPackage {
+    token = parseItemPackage(tree, token, lex, currentLevel)
+  }
+
+  if token.typ == itemImport {
+    token = parseItemImport(tree, token, lex, currentLevel)
+  }
+
+  if token.typ == itemFunctionDefine {
+    token = functionDefine(tree, token, lex, currentLevel)
+  }
+
+  // fmt.Println(valuesTranslations[int(token.typ)])
+}
+
+//non main parse functions
+func functionDefine(tree *AstTree, token *item, lex *lexer, level int) *item {
+  token = getNextToken(lex, false)
+
+  if token.typ != itemFunctionName {
+      parseErrorPrint(token, itemFunctionName)
+  }
+
+  tree.addChild(&AstTree{
+      key: time.Now().String(),
+      typ: itemFunctionDefine,
+      level: level,
+      text: "Function declaration",
+      data: token.val,
+    })
+
+  token = getNextToken(lex, false);
+
+  if token.typ != itemLeftParen {
+    parseErrorPrint(token, itemLeftParen)
+  }
+
+  token = getNextToken(lex, false);
+
+  if token.typ != itemRightParen {
+    parseErrorPrint(token, itemRightParen)
+  }
+
+  token = getNextToken(lex, false);
+
+  if token.typ != itemLeftDelim {
+    parseErrorPrint(token, itemRightParen)
+  }
+}
+
+func parseItemImport(tree *AstTree, token *item, lex *lexer, level int) *item {
+  node := tree.addChild(&AstTree{
+      key: time.Now().String(),
+      typ: itemNode,
+      level: level,
+      text: "Preprocessor directive import",
+    })
+
+  node.addChild(&AstTree{
+    key: time.Now().String(),
+    typ: itemImport,
+    data: token.val,
+    level: level + 1,
+    text: "Preprocessor directive",
+  })
+
+  token = getNextToken(lex, false)
+
+  if token.typ != itemLeftParen {
+    parseErrorPrint(token, itemLeftParen)
+  }
+
+  for token = getNextToken(lex, true); token.typ == itemString; token = getNextToken(lex, true) {
+    node.addChild(&AstTree{
+      key: time.Now().String(),
+      data: token.val,
+      typ: itemString,
+      level: level + 1,
+      text: "Called library",
+    })
+  }
+
+  if token.typ != itemRightParen {
+    parseErrorPrint(token, itemRightParen)
+  }
+
+  token = getNextToken(lex, false)
+
+  if token.typ != itemNewLine {
+    parseErrorPrint(token, itemNewLine)
+  }
+
+  return getNextToken(lex, true)
+}
+
+func parseItemPackage(tree *AstTree, token *item, lex *lexer, level int) *item {
+  node := tree.addChild(&AstTree{
+      key: time.Now().String(),
+      typ: itemNode,
+      level: level,
+      text: "Preprocessor directive package",
+    })
+
+  node.addChild(&AstTree{
+    key: time.Now().String(),
+    typ: itemPackage,
+    data: token.val,
+    level: level + 1,
+    text: "Preprocessor directive",
+  })
+
+  token = getNextToken(lex, false)
+
+  if token.typ == itemPackageValue {
+    node.addChild(&AstTree{
+      key: time.Now().String(),
+      typ: itemPackageValue,
+      data: token.val,
+      level: level + 1,
+      text: "Preprocessor package value",
+    })
+  } else {
+    parseErrorPrint(token, itemPackageValue)
+  }
+
+  token = getNextToken(lex, false)
+
+  if token.typ != itemNewLine {
+    parseErrorPrint(token, itemNewLine)
+  }
+
+  return getNextToken(lex, true)
+}
+//
+// //support functions
+//
+func getNextToken(lex *lexer, skipNewLine bool) *item {
+  token := <-lex.items
+
+  if skipNewLine == true {
+    for ;token.typ == itemSpace || token.typ == itemComment || token.typ == itemNewLine; {
+      token = <-lex.items
+    }
+  } else {
+    for ;token.typ == itemSpace || token.typ == itemComment; {
+      token = <-lex.items
+    }
+  }
+
+  return &token
+}
+
+func parseErrorPrint(token *item, item itemType)  {
+  fmt.Println("There should be", valuesTranslations[int(item)], "<", token.pos, ">", "line:", token.line)
+  os.Exit(1)
 }

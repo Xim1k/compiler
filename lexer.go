@@ -133,6 +133,7 @@ const (
 	itemUnknownToken
 	itemSemiColon
 	itemComment
+	itemNode
 )
 
 const eof = -1
