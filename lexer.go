@@ -42,25 +42,25 @@ func (i item) String() string {
 type itemType int
 
 var keyWords = map[string]itemType{
-	".":        itemDot,
-	"block":    itemBlock,
-	"define":   itemDefine,
-	"else":     itemElse,
-	"end":      itemEnd,
-	"if":       itemIf,
-	"range":    itemRange,
-	"nil":      itemNil,
-	"template": itemTemplate,
-	"with":     itemWith,
-	"for": itemFor,
-	"package": itemPackage,
-	"import": itemImport,
-  "func": itemFunctionDefine,
-  "map": itemMap,
-  "var": itemVar,
-  "int": itemIntType,
-  "byte": itemByteType,
-  "string": itemStringType,
+    ".":        itemDot,
+    "block":    itemBlock,
+    "define":   itemDefine,
+    "else":     itemElse,
+    "end":      itemEnd,
+    "if":       itemIf,
+    "range":    itemRange,
+    "nil":      itemNil,
+    "template": itemTemplate,
+    "with":     itemWith,
+    "for": itemFor,
+    "package": itemPackage,
+    "import": itemImport,
+    "func": itemFunctionDefine,
+    "map": itemMap,
+    "var": itemVar,
+    "int": itemIntType,
+    "byte": itemByteType,
+    "string": itemStringType,
 }
 
 type lexer struct {
@@ -134,6 +134,7 @@ const (
 	itemSemiColon
 	itemComment
 	itemNode
+	itemCalledLibrary
 )
 
 const eof = -1

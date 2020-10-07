@@ -64,6 +64,8 @@ var valuesTranslations = map[int]string{
   52: "itemUnknownToken",
   53: "itemSemiColon",
   54: "itemComment",
+  55: "itemNode",
+  56: "itemCalledLibrary",
 }
 
 func main() {
@@ -100,16 +102,19 @@ func parse(lex *lexer) {
 func stmt(tree *AstTree, token *item, lex *lexer, currentLevel int) {
   if token.typ == itemPackage {
     token = parseItemPackage(tree, token, lex, currentLevel)
+  } else {
+    parseErrorPrint(token, itemPackage)
   }
 
   if token.typ == itemImport {
     token = parseItemImport(tree, token, lex, currentLevel)
+  } else {
+    parseErrorPrint(token, itemImport)
   }
 
   if token.typ == itemFunctionDefine {
     token = functionDefine(tree, token, lex, currentLevel)
   }
-
   // fmt.Println(valuesTranslations[int(token.typ)])
 }
 
@@ -146,6 +151,176 @@ func functionDefine(tree *AstTree, token *item, lex *lexer, level int) *item {
   if token.typ != itemLeftDelim {
     parseErrorPrint(token, itemRightParen)
   }
+
+  return parseFunction(tree, lex, level + 1)
+}
+
+func parseFunction(tree *AstTree, lex *lexer, level int) *item {
+    token := getNextToken(lex, true)
+
+    if token.typ == itemIf {
+         node := tree.addChild(&AstTree{
+              key: time.Now().String(),
+              typ: itemIf,
+              level: level,
+              text: "Condition if",
+              data: token.val,
+         })
+
+        parseCondition(tree, node, lex, level + 1)
+    }
+
+    return getNextToken(lex, false)
+}
+
+func parseCondition(tree *AstTree, node *AstTree, lex *lexer, level int) {
+    token := getNextToken(lex, false)
+    chars := []string{"-", "+", "*", "/", "%", "++", "--", "(", ")", "!", "==", "!=", "<", ">", "<=", ">="}
+    connectionChars := []string{"&&", "||"}
+
+    for (token.typ != itemChar && token.val != "]") {
+        if token.typ == itemIdentifier || token.typ == itemNumber {
+            switch typeOfToken := token.typ; {
+                case typeOfToken == itemIdentifier:
+                    parseIdentifier(tree, node, token, lex, level)
+
+                    break
+                case typeOfToken == itemNumber:
+                    node.addChild(&AstTree{
+                        key: time.Now().String(),
+                        typ: itemNumber,
+                        level: level,
+                        text: "Number",
+                        data: token.val,
+                    })
+
+                    break;
+            }
+
+            flag, _ := in_array(token.val, chars)
+
+            if token.typ == itemChar && flag == true {
+                node.addChild(&AstTree{
+                    key: time.Now().String(),
+                    typ: itemChar,
+                    level: level,
+                    text: "Condition char",
+                    data: token.val,
+                })
+            } else {
+                parseErrorPrint(token, itemChar)
+            }
+
+            if token.typ == itemIdentifier || token.typ == itemNumber {
+                switch typeOfToken := token.typ; {
+                    case typeOfToken == itemIdentifier:
+                        parseIdentifier(tree, node, token, lex, level)
+
+                        break
+                    case typeOfToken == itemNumber:
+                        node.addChild(&AstTree{
+                            key: time.Now().String(),
+                            typ: itemNumber,
+                            level: level,
+                            text: "Number",
+                            data: token.val,
+                        })
+
+                        break;
+                }
+            } else {
+                parseErrorPrint(token, itemIdentifier)
+            }
+
+            token = getNextToken(lex, true)
+            flag, _ = in_array(token.val, connectionChars)
+
+            if token.typ == itemChar && flag == true {
+                node.addChild(&AstTree{
+                    key: time.Now().String(),
+                    typ: itemChar,
+                    level: level,
+                    text: "Connection conditions char",
+                    data: token.val,
+                })
+
+                token = getNextToken(lex, false)
+
+                if token.typ != itemIdentifier || token.typ != itemNumber {
+                    parseErrorPrint(token, itemIdentifier)
+                }
+            } else {
+                token = getNextToken(lex, false)
+            }
+        } else {
+            parseErrorPrint(token, itemIdentifier)
+        }
+    }
+}
+
+func parseIdentifier(tree *AstTree, node *AstTree, token *item, lex *lexer, level int) {
+    if token.val == "os" {
+        childNode := node.addChild(&AstTree{
+            key: time.Now().String(),
+            typ: itemCalledLibrary,
+            level: level,
+            text: "Called library",
+            data: token.val,
+        })
+
+        token = getNextToken(lex, false)
+
+        if token.typ == itemField {
+            childNode.addChild(&AstTree{
+                key: time.Now().String(),
+                typ: itemField,
+                level: level,
+                text: "Called Field",
+                data: trimLeftChar(token.val),
+            })
+
+            token = getNextToken(lex, false)
+
+            if token.typ == itemChar && token.val == "[" {
+                parseIndex(tree, childNode, lex, level)
+            }
+
+
+        } else {
+            parseErrorPrint(token, itemField)
+        }
+    } else {
+        tree.addChild(&AstTree{
+              key: time.Now().String(),
+              typ: itemIdentifier,
+              level: level,
+              text: "Identifier",
+              data: token.val,
+        })
+    }
+}
+
+func parseIndex(tree *AstTree, node *AstTree, lex *lexer, level int) *item {
+	switch token := getNextToken(lex, false); {
+	    case token.typ == itemIdentifier:
+	        parseIdentifier(tree, node, token, lex, level)
+
+	        break;
+	    case token.typ == itemNumber:
+	        node.addChild(&AstTree{
+                key: time.Now().String(),
+                typ: itemNumber,
+                level: level,
+                text: "Index of array",
+                data: token.val,
+            })
+
+            getNextToken(lex, false)
+        default:
+            parseErrorPrint(token, itemNumber)
+	}
+
+	return getNextToken(lex, false)
 }
 
 func parseItemImport(tree *AstTree, token *item, lex *lexer, level int) *item {
