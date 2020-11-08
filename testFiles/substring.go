@@ -2,25 +2,20 @@ package main
 
 import (
   "fmt"
-  "regexp"
-  "os"
+  "strings"
 )
 
-func main()  {
-  strings := []string{
-    "string@asdasd.ru",
-    "string@asd.ru",
-    "string@a.ru",
-  }
+func main() {
+    var stringss = [3]string{"string@asdasd.ru","string@asd.ru","string@a.ru"}
+    var index int = 0
 
-  subString := "asd"
+    var subString string = "asd"
 
-  for _, string := range strings {
-        matched, err := regexp.Match(subString, []byte(string))
-        if matched {
-            fmt.Printf("√ '%s' has subString\n", string)
+    for index < len(stringss) {
+        if strings.Contains(stringss[index], subString) {
+            fmt.Printf("√ '%s' has subString\n", stringss[index])
         } else {
-            fmt.Printf("X '%s' hasn't subString\n", string)
+            fmt.Printf("X '%s' hasn't subString\n", stringss[index])
         }
     }
 }

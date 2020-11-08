@@ -60,7 +60,9 @@ var keyWords = map[string]itemType{
     "var": itemVar,
     "int": itemIntType,
     "byte": itemByteType,
+    "bool": itemBoolType,
     "string": itemStringType,
+	"return": itemReturn,
 }
 
 type lexer struct {
@@ -135,6 +137,20 @@ const (
 	itemComment
 	itemNode
 	itemCalledLibrary
+	itemEqual
+	itemMupltiply
+	itemDivide
+	itemNot
+	itemGreater
+	itemLower
+	itemGreaterOrEqual
+	itemLowerOrEqual
+	itemOr
+	itemAnd
+	itemReturn
+	itemBoolType
+	itemIndex
+	itemRest
 )
 
 const eof = -1
@@ -175,6 +191,9 @@ func (l *lexer) backup() {
 }
 
 func (l *lexer) emit(t itemType) {
+	// if t == itemSpace {
+	// 	fmt.Println(l.input[l.start:l.pos])
+	// }
 	l.items <- item{t, l.currentStartOnLine, l.input[l.start:l.pos], l.startLine}
 	l.start = l.pos
 	l.currentStartOnLine = l.currentPosOnLine
@@ -245,13 +264,27 @@ func lexAction(l *lexer) stateFn {
 
 			return lexWithUnknownCondition(l, lexSpace)
 		case r == '=':
+	    nextRune := l.peek()
+
+			if nextRune == '=' && r == '=' {
+				return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemEqual)
+			}
+
 			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemAssign)
 		case r == ':':
 			return lexWithUnknownCondition(l, lexDeclareOrColon)
 		case r == '|':
+			nextRune := l.peek()
+
+			if nextRune == '|' && r == '|' {
+				return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemOr)
+			}
+
 			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemPipe)
 		case r == '"':
 			return lexWithUnknownCondition(l, lexQuote)
+		case r == '%':
+			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemRest)
 		case r == '`':
 			return lexWithUnknownCondition(l, lexRawQuote)
 		case r == '$':
@@ -266,6 +299,8 @@ func lexAction(l *lexer) stateFn {
 			if nextRune == '/' {
 				return lexWithUnknownCondition(l, lexOneLineComment)
 			}
+
+			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemDivide)
 		case r == '\'':
 			return lexWithUnknownCondition(l, lexChar)
 		case r == '.':
@@ -278,27 +313,29 @@ func lexAction(l *lexer) stateFn {
 			}
 
 			fallthrough
-	  case r == '+' || r == '-':
-	    nextRune := l.peek()
+		case r == '+' || r == '-':
+			nextRune := l.peek()
 
-	    if nextRune == '+' && r == '+' {
-				return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemDoublePlus)
-	    }
+			if nextRune == '+' && r == '+' {
+					return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemDoublePlus)
+			}
 
-	    if nextRune == '-' && r == '-' {
-				return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemDoubleMinus)
-	    }
+			if nextRune == '-' && r == '-' {
+					return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemDoubleMinus)
+			}
 
-	    if nextRune == ' ' && r == '+' {
+			if nextRune != '+' && r == '+' {
 				return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemPlus)
-	    }
+			}
 
-			if nextRune == ' ' && r == '-' {
+			if nextRune != '-' && r == '-' {
 				return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemMinus)
 			}
-	  case r == '{':
+		case r == '*':
+			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemMupltiply)
+		case r == '{':
 			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemLeftDelim)
-	  case r == '}':
+		case r == '}':
 			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemRightDelim)
 		case r == '!':
 			if l.previousUnknown {
@@ -313,6 +350,8 @@ func lexAction(l *lexer) stateFn {
 
 				return lexAction
 			}
+
+			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemNot)
 		case ('0' <= r && r <= '9'):
 			return lexWithUnknownCondition(l, lexNumber)
 		case isAlphaNumeric(r):
@@ -323,7 +362,31 @@ func lexAction(l *lexer) stateFn {
 			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemRightParen)
 		case r == ';':
 			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemSemiColon)
-		case r == ',' || r == '[' || r == ']' || r == '<' || r == '>':
+		case r == '>':
+			nextRune := l.peek()
+
+		    if nextRune == '=' && r == '>' {
+				return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemGreaterOrEqual)
+		    }
+
+			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemGreater)
+		case r == '&':
+			nextRune := l.peek()
+
+			if nextRune == '&' && r == '&' {
+				return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemAnd)
+			}
+
+			fallthrough
+		case r == '<':
+			nextRune := l.peek()
+
+			if nextRune == '=' && r == '<' {
+				return lexWithUnknownConditionAndDoubleArguments(l, lexDoubleSign, itemLowerOrEqual)
+			}
+
+			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemLower)
+		case r == ',' || r == '[' || r == ']':
 			return lexWithUnknownConditionAndDoubleArguments(l, lexDefaultToken, itemChar)
 		default:
 			l.previousUnknown = true
@@ -439,22 +502,26 @@ func lexIdentifier(l *lexer) stateFn {
 				}
 
 				switch {
-				case keyWords[word] > itemKeyword:
-					l.emit(keyWords[word])
+			case keyWords[word] > itemKeyword:
+				l.emit(keyWords[word])
 
-	        if keyWords[word] == itemPackage {
-						l.currentPosOnLine -= Pos(1)
+		        if keyWords[word] == itemPackage {
+							l.currentPosOnLine -= Pos(1)
 
-	          return lexPackageValue
-	        }
+		          return lexPackageValue
+		        }
 
-	        if keyWords[word] == itemFunctionDefine {
-	          return lexFunctionDefine
-	        }
-				case l.peek() == '(':
-	        l.emit(itemFunction)
-				case word == "true", word == "false":
-					l.emit(itemBool)
+		        if keyWords[word] == itemFunctionDefine {
+		          return lexFunctionDefine
+		        }
+
+				// if keyWords[word] == itemReturn {
+				//   return lexReturn
+				// }
+			// case l.peek() == '(':
+	        // 	l.emit(itemFunction)
+			case word == "true", word == "false":
+				l.emit(itemBool)
 				default:
 					l.emit(itemIdentifier)
 				}
@@ -470,6 +537,12 @@ func lexFunctionDefine(l *lexer) stateFn {
   for {
     switch r := l.next(); {
       case isSpace(r):
+		if strings.TrimSpace(string(l.input[l.start:l.pos])) != "" {
+			l.emit(itemUnknownToken)
+
+			break
+		}
+
         l.emit(itemSpace)
 
         break
@@ -572,7 +645,7 @@ func (l *lexer) atTerminator() bool {
 	}
 
 	switch r {
-  case eof, '.', ',', '|', ':', ')', '(', '[', ']', '{', '}':
+  case eof, '.', ',', '|', ':', ')', '(', '[', ']', '{', '}', ';':
     	return true
 	}
 
@@ -617,7 +690,6 @@ func lexDoubleSign(l *lexer, expectedType itemType) stateFn {
   l.pos += Pos(1)
   l.currentPosOnLine += Pos(1)
   l.emit(expectedType)
-  l.next()
 
   return lexAction
 }

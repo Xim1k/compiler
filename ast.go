@@ -8,13 +8,13 @@ import (
 )
 
 type AstTree struct {
-  key string
-  level int
-	typ  itemType
-	data  string
-  text string
-	parent  *AstTree
-	childs []*AstTree
+    key string
+    level int
+    typ  itemType
+    data  string
+    text string
+    parent  *AstTree
+    childs []*AstTree
 }
 
 func indexOfInSlice(a []*AstTree, b AstTree) int {
